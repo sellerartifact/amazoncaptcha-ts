@@ -40,7 +40,7 @@ let cachedFingerprints: FingerprintMap | null = null;
 
 function loadFingerprints(): FingerprintMap {
   if (!cachedFingerprints) {
-    const path = join(__dirname, "training_data", "fingerprints.json");
+    const path = join(__dirname, "../training_data", "fingerprints.json");
     const raw = readFileSync(path, "utf-8");
     cachedFingerprints = JSON.parse(raw) as FingerprintMap;
   }

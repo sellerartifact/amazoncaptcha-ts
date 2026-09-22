@@ -1,6 +1,6 @@
 {
   "name": "amazoncaptcha",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "exports": {
     ".": {
@@ -10,7 +10,8 @@
   },
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "training_data"
   ],
   "scripts": {
     "build": "rslib",
