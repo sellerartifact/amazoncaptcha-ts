@@ -1,5 +1,7 @@
 # amazoncaptcha-ts
 
+English| [简体中文](./README-CN.md)
+
 A pure Node.js + TypeScript port of [`a-maliarov/amazoncaptcha`](https://github.com/a-maliarov/amazoncaptcha) — a lightweight solver for [Amazon's text captcha](https://www.amazon.com/errors/validateCaptcha).
 
 No OCR engines, no neural networks, no native bindings. Just image thresholding, column-scanning segmentation, and an exact pixel-fingerprint lookup table — the same trick the original Python library uses, reimplemented on top of [`jimp`](https://github.com/jimp-dev/jimp) so it runs anywhere Node.js does.
