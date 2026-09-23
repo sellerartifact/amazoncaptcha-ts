@@ -16,6 +16,7 @@ import { Jimp } from "jimp";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { buildModel, compileModel } from "../src/model.js";
+import { saveModel } from "../src/model-io.js";
 import { letterToIndex, indexToLetter } from "../src/preprocessing.js";
 import { shuffle } from "../src/utils.js";
 
@@ -102,9 +103,7 @@ async function loadTrainingData(
   const trainItems = shuffled.slice(0, trainSize);
   const valItems = shuffled.slice(trainSize);
 
-  console.log(
-    `   Train: ${trainItems.length}, Validation: ${valItems.length}`,
-  );
+  console.log(`   Train: ${trainItems.length}, Validation: ${valItems.length}`);
 
   // 加载图片并转换为 tensors
   const loadDataset = async (items: TrainingDataItem[]) => {
@@ -150,7 +149,7 @@ async function train() {
 
   const dataDir = join(process.cwd(), "data", "processed");
   const indexPath = join(process.cwd(), "data", "training_index.json");
-  const modelSavePath = "file://" + join(process.cwd(), "models", "captcha_model");
+  const modelSavePath = join(process.cwd(), "models", "captcha_model");
 
   // 加载数据
   const { trainData, valData } = await loadTrainingData(dataDir, indexPath);
@@ -194,7 +193,7 @@ async function train() {
 
   // 保存模型
   console.log(`\n💾 Saving model to: ${modelSavePath}`);
-  await model.save(modelSavePath);
+  await saveModel(model, modelSavePath);
 
   // 测试几个预测
   console.log("\n🧪 Testing predictions...");

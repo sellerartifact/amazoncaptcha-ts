@@ -1,4 +1,5 @@
 import * as tf from "@tensorflow/tfjs";
+import { loadModelFromDirectory } from "./model-io.js";
 import { preprocessLetter, indexToLetter } from "./preprocessing.js";
 
 let cachedModel: tf.LayersModel | null = null;
@@ -11,7 +12,7 @@ export async function loadModel(
 ): Promise<tf.LayersModel> {
   if (!cachedModel) {
     console.log(`Loading model from: ${modelPath}`);
-    cachedModel = await tf.loadLayersModel(`file://${modelPath}/model.json`);
+    cachedModel = await loadModelFromDirectory(modelPath);
   }
   return cachedModel;
 }

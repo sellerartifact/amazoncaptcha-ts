@@ -19,6 +19,7 @@ await tf.ready();
 
 // 导出核心功能
 export { buildModel, compileModel } from "./model.js";
+export { saveModel } from "./model-io.js";
 export { loadModel, predictLetter, predictLetters } from "./predict.js";
 export {
   preprocessLetter,
