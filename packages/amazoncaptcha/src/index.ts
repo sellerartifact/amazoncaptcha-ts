@@ -232,3 +232,12 @@ export async function solve(source: string | Buffer): Promise<string> {
 
   return result.join("");
 }
+
+// 导出内部函数供 amazoncaptcha-tfjs 使用
+export {
+  toMonochromeMatrix,
+  findLetterBoxes,
+  cutTheWhite,
+  mergeHorizontally,
+  type PixelMatrix,
+};

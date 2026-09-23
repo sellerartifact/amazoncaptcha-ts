@@ -16,13 +16,16 @@
     "build": "rslib",
     "dev": "rslib --watch",
     "test": "rstest",
-    "test:watch": "rstest --watch"
+    "test:watch": "rstest --watch",
+    "prepare-data": "tsx scripts/prepare_training_data.ts",
+    "train": "tsx scripts/train_model.ts"
   },
   "devDependencies": {
     "@rslib/core": "^1.0.1",
     "@rstest/adapter-rslib": "^0.11.12",
     "@rstest/core": "^0.11.12",
     "@types/node": "^24.13.4",
+    "tsx": "^4.19.2",
     "typescript": "^6.0.3"
   },
   "engines": {
@@ -33,6 +36,10 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",
-    "@tensorflow/tfjs-backend-wasm": "^4.22.0"
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "jimp": "^1.6.0"
+  },
+  "peerDependencies": {
+    "amazoncaptcha": "workspace:*"
   }
 }
