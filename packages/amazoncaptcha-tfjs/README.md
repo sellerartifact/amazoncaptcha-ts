@@ -22,11 +22,11 @@
 ```
 输入: 28x28x1 灰度图像（单个字母）
   ↓
-Conv2D (32 filters, 3x3) + ReLU + MaxPooling + Dropout
+Conv2D (16 filters, 3x3) + ReLU + MaxPooling + Dropout
   ↓
-Conv2D (64 filters, 3x3) + ReLU + MaxPooling + Dropout
+Conv2D (32 filters, 3x3) + ReLU + MaxPooling
   ↓
-Flatten + Dense(128) + ReLU + Dropout(0.5)
+Flatten + Dense(64) + ReLU + Dropout(0.5)
   ↓
 Dense(26) + Softmax
   ↓
@@ -114,10 +114,23 @@ git clone https://github.com/a-maliarov/amazon-captcha-database
 pnpm run train
 ```
 
+当前使用轻量 CNN（16/32 个卷积通道、64 个全连接单元，约 10.8 万参数），以降低
+CPU 训练耗时。训练使用 CPU 后端（WASM 后端目前只支持推理，不支持 CNN 反向传播），默认每个字母
+最多抽取 100 个样本（最多约 2,600 个字符）、20 个 epoch、batch size 128、每 5 个
+epoch 验证一次。可按需覆盖，例如完整训练 50 个 epoch：
+
+```powershell
+$env:CAPTCHA_TRAIN_EPOCHS = "50"
+pnpm run train
+```
+
+可用环境变量：`CAPTCHA_TRAIN_SAMPLES_PER_LETTER`、`CAPTCHA_TRAIN_EPOCHS`、
+`CAPTCHA_TRAIN_BATCH_SIZE` 和 `CAPTCHA_TRAIN_VALIDATION_FREQ`。
+
 训练过程会：
 - 加载并预处理训练数据
 - 自动划分训练集/验证集（80/20）
-- 训练 50 个 epoch
+- 训练 20 个 epoch
 - 保存模型到 `models/captcha_model/`
 
 训练输出示例：

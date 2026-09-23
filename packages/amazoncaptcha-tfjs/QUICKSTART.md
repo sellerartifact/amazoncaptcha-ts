@@ -124,7 +124,9 @@ Error: Out of memory
 
 ### 问题：训练速度太慢
 
-**当前设置**：使用 WASM 后端（纯 JavaScript）
+**当前设置**：训练使用 CPU 后端；WASM 后端仅用于推理，因为它缺少 CNN 训练所需的反向传播算子。
+默认每个字母最多使用 100 个样本（最多约 2,600 个字符）；可通过
+`CAPTCHA_TRAIN_SAMPLES_PER_LETTER` 调整。
 
 **加速方案**：
 1. 在 Linux/Mac 上安装 `@tensorflow/tfjs-node`

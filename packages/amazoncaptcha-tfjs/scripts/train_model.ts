@@ -1,20 +1,19 @@
 /**
  * 模型训练脚本
  *
- * 注意：使用纯 JS 版本的 TensorFlow.js 训练会比较慢
- * 如果需要更快的训练速度，建议：
- * 1. 在 Linux/Mac 上使用 @tensorflow/tfjs-node
- * 2. 或者使用 Python + TensorFlow 训练后转换模型
+ * 训练使用 CPU 后端：当前 TensorFlow.js WASM 后端不包含 Conv2D 反向传播算子，
+ * 只能用于推理，不能直接训练这个 CNN。
  */
 
 import * as tf from "@tensorflow/tfjs";
+import { Jimp } from "jimp";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-// 使用默认的 CPU 后端（更稳定）
+await tf.setBackend("cpu");
 await tf.ready();
 console.log(`Using backend: ${tf.getBackend()}`);
-import { Jimp } from "jimp";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+
 import { buildModel, compileModel } from "../src/model.js";
 import { saveModel } from "../src/model-io.js";
 import { letterToIndex, indexToLetter } from "../src/preprocessing.js";
@@ -24,6 +23,22 @@ interface TrainingDataItem {
   filename: string;
   label: string;
   captchaSource: string;
+}
+
+function positiveIntegerFromEnv(name: string, fallback: number): number {
+  const rawValue = process.env[name];
+  if (rawValue === undefined) {
+    return fallback;
+  }
+
+  const value = Number(rawValue);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(
+      `${name} must be a positive integer; received: ${rawValue}`,
+    );
+  }
+
+  return value;
 }
 
 /**
@@ -93,10 +108,30 @@ async function loadTrainingData(
     throw new Error("No training data found!");
   }
 
-  console.log(`   Found ${trainingIndex.length} samples`);
+  const maxSamplesPerLetter = positiveIntegerFromEnv(
+    "CAPTCHA_TRAIN_SAMPLES_PER_LETTER",
+    100,
+  );
+  const samplesByLetter = new Map<string, TrainingDataItem[]>();
+  for (const item of trainingIndex) {
+    const letter = item.label.toLowerCase();
+    const samples = samplesByLetter.get(letter) ?? [];
+    samples.push(item);
+    samplesByLetter.set(letter, samples);
+  }
+
+  // 按字母分别限量，避免直接截断造成类别失衡。
+  const limitedTrainingIndex = [...samplesByLetter.entries()].flatMap(
+    ([, samples]) => shuffle(samples).slice(0, maxSamplesPerLetter),
+  );
+
+  console.log(`   Found ${trainingIndex.length} samples in total`);
+  console.log(
+    `   Using ${limitedTrainingIndex.length} samples (up to ${maxSamplesPerLetter} per letter)`,
+  );
 
   // 打乱数据
-  const shuffled = shuffle(trainingIndex);
+  const shuffled = shuffle(limitedTrainingIndex);
 
   // 划分训练集和验证集
   const trainSize = Math.floor(shuffled.length * trainRatio);
@@ -167,26 +202,78 @@ async function train() {
 
   model.summary();
 
-  // 训练参数
-  const epochs = 50;
-  const batchSize = 32;
+  // 默认配置优先缩短反馈周期；需要完整训练时可通过环境变量覆盖。
+  const epochs = positiveIntegerFromEnv("CAPTCHA_TRAIN_EPOCHS", 20);
+  const batchSize = positiveIntegerFromEnv("CAPTCHA_TRAIN_BATCH_SIZE", 128);
+  const validationFreq = positiveIntegerFromEnv(
+    "CAPTCHA_TRAIN_VALIDATION_FREQ",
+    5,
+  );
+  const batchesPerEpoch = Math.ceil(trainData.xs.shape[0] / batchSize);
+  let currentEpoch = 1;
 
-  console.log("\n🏋️  Training...\n");
+  console.log("\n🏋️  Training...");
+  console.log(
+    `   Epochs: ${epochs}, batch size: ${batchSize}, ${batchesPerEpoch} batches/epoch, ` +
+      `validation every ${validationFreq} epoch(s)\n`,
+  );
 
   await model.fit(trainData.xs, trainData.ys, {
     epochs,
     batchSize,
-    validationData: [valData.xs, valData.ys],
     shuffle: true,
     callbacks: {
-      onEpochEnd: (epoch, logs) => {
+      onBatchBegin: (batch) => {
+        console.log(
+          `  Epoch ${currentEpoch}/${epochs} - ` +
+            `batch ${batch + 1}/${batchesPerEpoch} started`,
+        );
+      },
+      onBatchEnd: (batch, logs) => {
+        const loss = logs?.loss;
+        const accuracy = logs?.acc ?? logs?.accuracy;
+        console.log(
+          `  Epoch ${currentEpoch}/${epochs} - ` +
+            `batch ${batch + 1}/${batchesPerEpoch} done - ` +
+            `loss: ${typeof loss === "number" ? loss.toFixed(4) : "n/a"} - ` +
+            `acc: ${typeof accuracy === "number" ? accuracy.toFixed(4) : "n/a"}`,
+        );
+      },
+      onEpochEnd: async (epoch, logs) => {
+        const value = (name: string) => {
+          const metric = logs?.[name];
+          return typeof metric === "number" ? metric.toFixed(4) : "n/a";
+        };
+
+        let validationMessage = "val_loss: n/a - val_acc: n/a";
+        const isValidationEpoch =
+          (epoch + 1) % validationFreq === 0 || epoch + 1 === epochs;
+        if (isValidationEpoch) {
+          const evaluation = model.evaluate(valData.xs, valData.ys, {
+            batchSize,
+          });
+          const evaluationTensors = Array.isArray(evaluation)
+            ? evaluation
+            : [evaluation];
+          const evaluationValues = await Promise.all(
+            evaluationTensors.map(async (tensor) => {
+              const values = await tensor.data();
+              tensor.dispose();
+              return values[0];
+            }),
+          );
+          validationMessage =
+            `val_loss: ${(evaluationValues[0] ?? NaN).toFixed(4)} - ` +
+            `val_acc: ${(evaluationValues[1] ?? NaN).toFixed(4)}`;
+        }
+
         console.log(
           `Epoch ${epoch + 1}/${epochs} - ` +
-            `loss: ${logs?.loss.toFixed(4)} - ` +
-            `acc: ${logs?.acc.toFixed(4)} - ` +
-            `val_loss: ${logs?.val_loss.toFixed(4)} - ` +
-            `val_acc: ${logs?.val_acc.toFixed(4)}`,
+            `loss: ${value("loss")} - ` +
+            `acc: ${value("acc")} - ` +
+            validationMessage,
         );
+        currentEpoch = epoch + 2;
       },
     },
   });
