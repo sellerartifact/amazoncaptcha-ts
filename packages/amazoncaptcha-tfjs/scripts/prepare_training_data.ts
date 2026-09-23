@@ -6,7 +6,7 @@
  */
 
 import { Jimp } from "jimp";
-import { writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 
 // 从 amazoncaptcha 包复制的核心函数
@@ -215,32 +215,35 @@ async function extractLettersFromCaptcha(
  * 主函数
  */
 async function main() {
-  const captchasDir = join(
-    process.cwd(),
-    "..",
-    "amazoncaptcha",
-    "tests",
-    "captchas",
-  );
+  const captchasDir = join(process.cwd(), "training-data");
   const outputDir = join(process.cwd(), "data", "processed");
+  const labelsPath = join(process.cwd(), "data", "labels.json");
 
   // 创建输出目录
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true });
   }
 
-  // 验证码及其标签（从 amazoncaptcha 包的测试用例获取）
-  const captchaLabels: Record<string, string> = {
-    "notcorrupted.jpg": "krjnby",
-    // 添加更多已知标签的验证码
-    // 你需要手动标注或从已知数据集获取
-  };
+  // 读取标签文件
+  if (!existsSync(labelsPath)) {
+    console.error(`❌ labels.json not found at: ${labelsPath}`);
+    console.log(
+      "   Please run: pnpm run generate-labels to create labels.json first",
+    );
+    process.exit(1);
+  }
+
+  const captchaLabels: Record<string, string> = JSON.parse(
+    readFileSync(labelsPath, "utf-8"),
+  );
 
   console.log("🚀 Starting training data preparation...\n");
+  console.log(`Found ${Object.keys(captchaLabels).length} labeled captchas`);
 
   const allTrainingData: TrainingDataItem[] = [];
 
   // 处理所有验证码
+  let processed = 0;
   for (const [filename, label] of Object.entries(captchaLabels)) {
     const captchaPath = join(captchasDir, filename);
 
@@ -255,6 +258,11 @@ async function main() {
       outputDir,
     );
     allTrainingData.push(...items);
+
+    processed++;
+    if (processed % 100 === 0) {
+      console.log(`   Progress: ${processed}/${Object.keys(captchaLabels).length}`);
+    }
   }
 
   // 保存训练数据索引

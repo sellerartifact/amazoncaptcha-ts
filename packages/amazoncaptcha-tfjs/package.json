@@ -17,6 +17,7 @@
     "dev": "rslib --watch",
     "test": "rstest",
     "test:watch": "rstest --watch",
+    "generate-labels": "tsx scripts/generate_labels.ts",
     "prepare-data": "tsx scripts/prepare_training_data.ts",
     "train": "tsx scripts/train_model.ts"
   },

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "rstest";
+import { describe, expect, it } from "@rstest/core";
 import { letterToIndex, indexToLetter } from "../src/preprocessing.js";
 
 describe("preprocessing", () => {

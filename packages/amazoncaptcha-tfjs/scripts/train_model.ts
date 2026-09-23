@@ -8,13 +8,10 @@
  */
 
 import * as tf from "@tensorflow/tfjs";
-import "@tensorflow/tfjs-backend-wasm";
-import { setWasmPaths } from "@tensorflow/tfjs-backend-wasm";
 
-// 初始化 WASM 后端（比 CPU 后端快）
-setWasmPaths("../../node_modules/@tensorflow/tfjs-backend-wasm/dist/");
-await tf.setBackend("wasm");
+// 使用默认的 CPU 后端（更稳定）
 await tf.ready();
+console.log(`Using backend: ${tf.getBackend()}`);
 import { Jimp } from "jimp";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";

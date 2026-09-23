@@ -15,3 +15,4 @@ doc_build/
 .idea
 
 training-data/
+data/processed/
