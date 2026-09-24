@@ -101,8 +101,11 @@ console.log(results);
 ```typescript
 import { loadModel, predictLetters } from "amazoncaptcha-tfjs";
 
-// 加载自定义模型（默认路径：./models/captcha_model）
-const model = await loadModel("./custom_models/my_model");
+// 加载默认内置模型（自动从包的 models/ 目录加载）
+const model = await loadModel();
+
+// 或者加载自定义路径的模型
+const customModel = await loadModel("./custom_models/my_model");
 
 // 手动预测
 import {
@@ -378,7 +381,7 @@ packages/amazoncaptcha-tfjs/
 加载训练好的模型（带缓存）。
 
 - **参数：**
-  - `modelPath?: string` - 模型目录路径（默认 './models/captcha_model'）
+  - `modelPath?: string` - 模型目录路径（可选，默认自动从包内置的 models/captcha_model 加载）
 - **返回：** `Promise<tf.LayersModel>` - TensorFlow.js 模型实例
 
 ### `preprocessLetter(letterMatrix, targetSize?)`

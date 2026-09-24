@@ -1,18 +1,31 @@
 import * as tf from "@tensorflow/tfjs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { loadModelFromDirectory } from "./model-io.js";
 import { preprocessLetter, indexToLetter } from "./preprocessing.js";
 
 let cachedModel: tf.LayersModel | null = null;
 
 /**
+ * 获取默认模型路径（兼容开发和发布后的环境）
+ */
+function getDefaultModelPath(): string {
+  const currentFile = fileURLToPath(import.meta.url);
+  const currentDir = dirname(currentFile);
+  // 从 dist/ 或 src/ 目录向上一层，再进入 models/
+  return join(currentDir, "..", "models", "captcha_model");
+}
+
+/**
  * 加载训练好的模型（惰性加载 + 缓存）
  */
 export async function loadModel(
-  modelPath: string = "./models/captcha_model",
+  modelPath?: string,
 ): Promise<tf.LayersModel> {
   if (!cachedModel) {
-    console.log(`Loading model from: ${modelPath}`);
-    cachedModel = await loadModelFromDirectory(modelPath);
+    const path = modelPath || getDefaultModelPath();
+    console.log(`Loading model from: ${path}`);
+    cachedModel = await loadModelFromDirectory(path);
   }
   return cachedModel;
 }
