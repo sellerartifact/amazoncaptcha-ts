@@ -12,9 +12,37 @@ import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-backend-wasm";
 import { setWasmPaths } from "@tensorflow/tfjs-backend-wasm";
 import { predictLetters } from "./predict";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+// 动态解析 WASM 路径（Node.js 环境）
+let wasmPath: string;
+try {
+  // 尝试直接解析 WASM 文件路径
+  const wasmModulePath = await import.meta.resolve(
+    "@tensorflow/tfjs-backend-wasm/dist/tfjs-backend-wasm.wasm",
+  );
+  wasmPath = dirname(fileURLToPath(wasmModulePath)) + "/";
+} catch {
+  // 降级方案：解析包入口文件，然后找到 dist 目录
+  try {
+    // @ts-ignore
+    const { createRequire } = await import("node:module");
+    // @ts-ignore
+    const require = createRequire(import.meta.url);
+    // 解析包的主入口文件
+    const wasmPkgPath = require.resolve("@tensorflow/tfjs-backend-wasm");
+    const pkgDir = dirname(wasmPkgPath);
+    // 如果已经在 dist 目录中，直接使用；否则拼接 dist
+    wasmPath = pkgDir.endsWith("dist") ? pkgDir + "/" : join(pkgDir, "dist") + "/";
+  } catch {
+    // 最后降级：相对路径
+    wasmPath = "node_modules/@tensorflow/tfjs-backend-wasm/dist/";
+  }
+}
 
 // 初始化 WASM 后端
-setWasmPaths("node_modules/@tensorflow/tfjs-backend-wasm/dist/");
+setWasmPaths(wasmPath);
 await tf.setBackend("wasm");
 await tf.ready();
 
