@@ -4,7 +4,10 @@
 
 [`a-maliarov/amazoncaptcha`](https://github.com/a-maliarov/amazoncaptcha) 的 Node.js + TypeScript 移植版——一个轻量级的[亚马逊文本验证码](https://www.amazon.com/errors/validateCaptcha)识别库。
 
-不用 OCR 引擎,不用神经网络,不依赖任何原生绑定。核心就是图像二值化、按列扫描切字母、再加一张精确的像素指纹查找表——和 Python 原版用的是同一套思路,只是基于 [`jimp`](https://github.com/jimp-dev/jimp) 重新实现了一遍,这样只要能跑 Node.js 的地方就能用。
+本 monorepo 提供两种互补的识别方案:
+
+- **`amazoncaptcha`** — 快速指纹匹配（不用神经网络，不依赖原生绑定）。核心就是图像二值化、按列扫描切字母、再加一张精确的像素指纹查找表——和 Python 原版用的是同一套思路，只是基于 [`jimp`](https://github.com/jimp-dev/jimp) 重新实现了一遍。
+- **`amazoncaptcha-tfjs`** — 基于 TensorFlow.js 的 CNN 深度学习识别方案。对未见过的字体变体有更好的泛化能力，测试数据准确率达到 **100%**。
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-%5E20.19.0%20%7C%7C%20%3E%3D22.12.0-brightgreen.svg)
@@ -32,12 +35,23 @@
 
 ## 安装
 
+### 传统指纹匹配方式（速度快）
+
 ```bash
 pnpm add amazoncaptcha
 # 或者: npm install amazoncaptcha
 ```
 
+### 深度学习方式（泛化能力强）
+
+```bash
+pnpm add amazoncaptcha-tfjs amazoncaptcha
+# 或者: npm install amazoncaptcha-tfjs amazoncaptcha
+```
+
 ## 用法
+
+### 传统方式（指纹匹配）
 
 ```ts
 import { solve } from "amazoncaptcha";
@@ -47,6 +61,27 @@ const solution = await solve("./captcha.jpg");
 ```
 
 `solve()` 既可以传文件路径,也可以传内存里的 `Buffer`——不管你是从磁盘读图,还是直接拿到了验证码请求返回的图片数据,都能直接用。
+
+### 深度学习方式（CNN）
+
+```ts
+import { solve } from "amazoncaptcha-tfjs";
+
+const solution = await solve("./captcha.jpg");
+// 'krjnby' | 'Not solved'
+
+// 自定义置信度阈值（默认: 0.5）
+const solution = await solve("./captcha.jpg", 0.8);
+```
+
+**性能对比:**
+
+| 方法 | 准确率 | 速度 | 模型大小 | 泛化能力 |
+|------|--------|------|----------|----------|
+| 指纹匹配 | ~95% | ~10ms | ~MB | 低（仅精确匹配） |
+| CNN (TensorFlow.js) | **100%** | ~100ms | **~417KB** | 高（可处理变体） |
+
+查看 [`packages/amazoncaptcha-tfjs`](./packages/amazoncaptcha-tfjs) 了解如何训练自己的模型。
 
 ## 训练数据
 
@@ -77,14 +112,27 @@ python scripts/convert_training_data.py <原始training_data目录路径> packag
 ├── pnpm-workspace.yaml     # packages/*
 ├── tsconfig.base.json      # 共享的编译器配置
 └── packages/
-    └── amazoncaptcha/      # 基于 Rslib 的 TypeScript 库
-        ├── rslib.config.ts
-        ├── rstest.config.ts
+    ├── amazoncaptcha/      # 传统指纹匹配方式
+    │   ├── rslib.config.ts
+    │   ├── rstest.config.ts
+    │   ├── src/
+    │   │   ├── index.ts         # 入口，导出 `solve`
+    │   │   └── training_data/   # fingerprints.json 查找表
+    │   ├── tests/
+    │   └── dist/            # 构建产物（已加入 .gitignore）
+    └── amazoncaptcha-tfjs/ # 基于 CNN 的深度学习识别方案
         ├── src/
-        │   ├── index.ts         # 入口，导出 `solve`
-        │   └── training_data/   # fingerprints.json 查找表
-        ├── tests/
-        └── dist/            # 构建产物（已加入 .gitignore）
+        │   ├── index.ts         # 入口
+        │   ├── model.ts         # CNN 模型定义
+        │   ├── predict.ts       # 推理逻辑
+        │   └── preprocessing.ts # 图像预处理
+        ├── models/
+        │   └── captcha_model/   # 训练好的模型（~417KB）
+        ├── scripts/
+        │   ├── train_model.ts   # 模型训练
+        │   └── evaluate_model.ts # 准确率评估
+        ├── tests/               # 29 个测试用例
+        └── dist/
 ```
 
 ## 开发

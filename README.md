@@ -4,7 +4,10 @@ English| [简体中文](./README-CN.md)
 
 A pure Node.js + TypeScript port of [`a-maliarov/amazoncaptcha`](https://github.com/a-maliarov/amazoncaptcha) — a lightweight solver for [Amazon's text captcha](https://www.amazon.com/errors/validateCaptcha).
 
-No OCR engines, no neural networks, no native bindings. Just image thresholding, column-scanning segmentation, and an exact pixel-fingerprint lookup table — the same trick the original Python library uses, reimplemented on top of [`jimp`](https://github.com/jimp-dev/jimp) so it runs anywhere Node.js does.
+This monorepo provides two complementary approaches:
+
+- **`amazoncaptcha`** — Fast fingerprint matching (no neural networks, no native bindings). Just image thresholding, column-scanning segmentation, and an exact pixel-fingerprint lookup table — the same trick the original Python library uses, reimplemented on top of [`jimp`](https://github.com/jimp-dev/jimp) so it runs anywhere Node.js does.
+- **`amazoncaptcha-tfjs`** — CNN-based deep learning solver using TensorFlow.js. Better generalization on unseen font variations with **100% accuracy** on test data.
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-%5E20.19.0%20%7C%7C%20%3E%3D22.12.0-brightgreen.svg)
@@ -32,12 +35,23 @@ No confidence scores, no nearest-neighbor guessing by default — a match is eit
 
 ## Installation
 
+### Traditional Fingerprint Matching (Fast)
+
 ```bash
 pnpm add amazoncaptcha
 # or: npm install amazoncaptcha
 ```
 
+### Deep Learning with TensorFlow.js (Better Generalization)
+
+```bash
+pnpm add amazoncaptcha-tfjs amazoncaptcha
+# or: npm install amazoncaptcha-tfjs amazoncaptcha
+```
+
 ## Usage
+
+### Traditional Approach (Fingerprint Matching)
 
 ```ts
 import { solve } from "amazoncaptcha";
@@ -47,6 +61,27 @@ const solution = await solve("./captcha.jpg");
 ```
 
 `solve()` accepts a file path or an in-memory `Buffer`, so it works equally well reading a saved image or a captcha screenshot/response body you already have in memory.
+
+### Deep Learning Approach (CNN)
+
+```ts
+import { solve } from "amazoncaptcha-tfjs";
+
+const solution = await solve("./captcha.jpg");
+// 'krjnby' | 'Not solved'
+
+// With custom confidence threshold (default: 0.5)
+const solution = await solve("./captcha.jpg", 0.8);
+```
+
+**Performance comparison:**
+
+| Method | Accuracy | Speed | Model Size | Generalization |
+|--------|----------|-------|------------|----------------|
+| Fingerprint matching | ~95% | ~10ms | ~MB | Low (exact match only) |
+| CNN (TensorFlow.js) | **100%** | ~100ms | **~417KB** | High (handles variations) |
+
+See [`packages/amazoncaptcha-tfjs`](./packages/amazoncaptcha-tfjs) for detailed documentation on training your own model.
 
 ## Training data
 
@@ -77,14 +112,27 @@ This port deliberately borrows different things from each of its two predecessor
 ├── pnpm-workspace.yaml     # packages/*
 ├── tsconfig.base.json      # shared compiler options
 └── packages/
-    └── amazoncaptcha/      # Rslib TypeScript library
-        ├── rslib.config.ts
-        ├── rstest.config.ts
+    ├── amazoncaptcha/      # Traditional fingerprint matching
+    │   ├── rslib.config.ts
+    │   ├── rstest.config.ts
+    │   ├── src/
+    │   │   ├── index.ts         # public entry (exports `solve`)
+    │   │   └── training_data/   # fingerprints.json lookup table
+    │   ├── tests/
+    │   └── dist/            # build output (git-ignored)
+    └── amazoncaptcha-tfjs/ # CNN-based deep learning solver
         ├── src/
-        │   ├── index.ts         # public entry (exports `solve`)
-        │   └── training_data/   # fingerprints.json lookup table
-        ├── tests/
-        └── dist/            # build output (git-ignored)
+        │   ├── index.ts         # public entry
+        │   ├── model.ts         # CNN model definition
+        │   ├── predict.ts       # inference logic
+        │   └── preprocessing.ts # image preprocessing
+        ├── models/
+        │   └── captcha_model/   # trained model (~417KB)
+        ├── scripts/
+        │   ├── train_model.ts   # model training
+        │   └── evaluate_model.ts # accuracy evaluation
+        ├── tests/               # 29 test cases
+        └── dist/
 ```
 
 ## Development

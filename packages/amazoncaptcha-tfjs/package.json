@@ -10,7 +10,8 @@
   },
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "models"
   ],
   "scripts": {
     "build": "rslib",
