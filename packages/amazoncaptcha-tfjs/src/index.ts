@@ -11,6 +11,7 @@
 import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-backend-wasm";
 import { setWasmPaths } from "@tensorflow/tfjs-backend-wasm";
+import { predictLetters } from "./predict";
 
 // 初始化 WASM 后端
 setWasmPaths("node_modules/@tensorflow/tfjs-backend-wasm/dist/");
@@ -18,15 +19,15 @@ await tf.setBackend("wasm");
 await tf.ready();
 
 // 导出核心功能
-export { buildModel, compileModel } from "./model.js";
-export { saveModel } from "./model-io.js";
-export { loadModel, predictLetter, predictLetters } from "./predict.js";
+export { buildModel, compileModel } from "./model";
+export { saveModel } from "./model-io";
+export { loadModel, predictLetter, predictLetters } from "./predict";
 export {
   preprocessLetter,
   preprocessLetterBatch,
   letterToIndex,
   indexToLetter,
-} from "./preprocessing.js";
+} from "./preprocessing";
 
 // 从 amazoncaptcha 包导入分割逻辑（运行时动态导入）
 async function importAmazoncaptcha() {
@@ -78,7 +79,6 @@ export async function solve(
   const trimmedLetters = letters.map((l: any) => amazoncaptcha.cutTheWhite(l));
 
   // 使用 CNN 模型预测每个字母
-  const { predictLetters } = await import("./predict.js");
   const predictions = await predictLetters(trimmedLetters);
 
   // 检查置信度

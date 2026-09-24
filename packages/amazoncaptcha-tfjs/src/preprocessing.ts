@@ -48,6 +48,9 @@ export function preprocessLetter(
  * 'a' -> 0, 'b' -> 1, ..., 'z' -> 25
  */
 export function letterToIndex(letter: string): number {
+  if (!letter || letter.length === 0) {
+    throw new Error(`Invalid letter: ${letter}. Must be a-z.`);
+  }
   const code = letter.toLowerCase().charCodeAt(0);
   if (code < 97 || code > 122) {
     throw new Error(`Invalid letter: ${letter}. Must be a-z.`);
